@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard Financeiro</title>
+  <!-- Importação do Vue.js -->
+  <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
+  <!-- Importação do ECharts -->
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.3.3/dist/echarts.min.js"></script>
+  <!-- Importação do Vue-ECharts -->
+  <script src="https://cdn.jsdelivr.net/npm/vue-echarts@6.1.0/dist/vue-echarts.min.js"></script>
+  <!-- Estilos CSS -->
+  <style>
+    :root {
+      --dark-blue: #1a2c69;
+      --blue: #304592;
+      --light-blue: #e9eeff;
+      --green: #00b894;
+      --magenta: #d63384;
+      --gray: #f5f6fa;
+      --white: #ffffff;
+    }
+    
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #f0f2f5;
+      color: #333;
+    }
+    
+    #app {
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    
+    .sidebar {
+      position: fixed;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 70px;
+      background: linear-gradient(180deg, var(--dark-blue) 0%, #193065 100%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding-top: 20px;
+    }
+    
+    .sidebar-icon {
+      color: white;
+      margin: 15px 0;
+      padding: 12px;
+      border-radius: 12px;
+      cursor: pointer;
+    }
+    
+    .sidebar-icon.active {
+      background-color: rgba(255, 255, 255, 0.2);
+    }
+    
+    .main-content {
+      margin-left: 90px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      grid-gap: 20px;
+    }
+    
+    .card {
+      background-color: white;
+      border-radius: 16px;
+      padding: 25px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+      margin-bottom: 20px;
+    }
+    
+    .info-card {
+      border-radius: 16px;
+      padding: 20px;
+      color: white;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      overflow: hidden;
+      height: 120px;
+    }
+    
+    .faturamento-card {
+      background: linear-gradient(135deg, #1a2c69 0%, #304592 100%);
+    }
+    
+    .recebimento-card {
+      background: linear-gradient(135deg, #116d6e 0%, #19a697 100%);
+    }
+    
+    .lucro-card {
+      background: linear-gradient(135deg, #9b2c9d 0%, #d63384 100%);
+    }
+    
+    .card-title {
+      font-size: 15px;
+      font-weight: 500;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+    }
+    
+    .card-value {
+      font-size: 28px;
+      font-weight: 700;
+      margin-bottom: 5px;
+      letter-spacing: -0.5px;
+    }
+    
+    .chart-container {
+      height: 300px;
+      width: 100%;
+    }
+    
+    .percentage-indicator {
+      font-size: 18px;
+      font-weight: 700;
+      padding: 15px 0;
+      display: flex;
+      align-items: center;
+    }
+    
+    .percentage-up {
+      color: var(--green);
+    }
+    
+    .percentage-down {
+      color: var(--magenta);
+    }
+    
+    .meta-container {
+      display: flex;
+      justify-content: space-between;
+    }
+    
+    .progress-chart {
+      height: 260px;
+    }
+    
+    .ticket-container {
+      position: relative;
+      text-align: center;
+      padding: 20px;
+    }
+    
+    .ticket-label {
+      font-weight: 600;
+      margin-bottom: 10px;
+      color: var(--dark-blue);
+    }
+    
+    .ticket-value {
+      font-size: 26px;
+      font-weight: 700;
+      color: var(--dark-blue);
+      padding: 10px;
+      border: 2px solid var(--dark-blue);
+      border-radius: 50px;
+      display: inline-block;
+    }
+
+    .small-chart {
+      height: 50px;
+      position: absolute;
+      right: 20px;
+      bottom: 20px;
+      width: 120px;
+    }
+
+    /* Grade para Análise por Categoria */
+    .category-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    
+    .category-table td {
+      padding: 8px 10px;
+      font-size: 14px;
+    }
+    
+    .category-name {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 150px;
+    }
+    
+    .category-value {
+      text-align: right;
+      font-weight: 600;
+    }
+    
+    .category-bar {
+      height: 20px;
+      border-radius: 4px;
+      background-color: var(--blue);
+    }
+
+    .full-width {
+      grid-column: span 3;
+    }
+
+    .half-width {
+      grid-column: span 1.5;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <div class="sidebar-icon active">📊</div>
+      <div class="sidebar-icon">⚖️</div>
+      <div class="sidebar-icon">🧪</div>
+      <div class="sidebar-icon">🔄</div>
+    </div>
+
+    <!-- Dashboard Content -->
+    <div class="main-content">
+      <!-- Cards de KPIs principais -->
+      <div class="info-card faturamento-card">
+        <div class="card-title">FATURAMENTO</div>
+        <div class="card-value">R$ {{ formatNumber(faturamento) }}</div>
+        <div class="small-chart">
+          <chart ref="fatChart" :options="chartSmallOptions" :autoresize="true"></chart>
+        </div>
+      </div>
+
+      <div class="info-card recebimento-card">
+        <div class="card-title">RECEBIMENTO</div>
+        <div class="card-value">R$ {{ formatNumber(recebimento) }}</div>
+        <div class="small-chart">
+          <chart ref="recChart" :options="chartSmallGreenOptions" :autoresize="true"></chart>
+        </div>
+      </div>
+
+      <div class="info-card lucro-card">
+        <div class="card-title">LUCRO</div>
+        <div class="card-value">R$ {{ formatNumber(lucro) }}</div>
+        <div class="small-chart">
+          <chart ref="lucroChart" :options="chartSmallPinkOptions" :autoresize="true"></chart>
+        </div>
+      </div>
+
+      <!-- Gráfico de Faturamento Mensal -->
+      <div class="card full-width">
+        <div class="meta-container">
+          <div>
+            <span style="margin-right: 15px;"><span style="display: inline-block; width: 10px; height: 10px; background-color: #e0e0e0; border-radius: 50%; margin-right: 5px;"></span> Ano Anterior</span>
+            <span style="margin-right: 15px;"><span style="display: inline-block; width: 10px; height: 10px; background-color: var(--blue); border-radius: 50%; margin-right: 5px;"></span> Ano Atual</span>
+            <span><span style="display: inline-block; width: 10px; height: 10px; background-color: #00b894; border-radius: 50%; margin-right: 5px;"></span> Meta de Faturamento</span>
+          </div>
+          <div>
+            <span>Meta: R$ {{ formatNumber(metaFaturamento) }}</span>
+          </div>
+        </div>
+        <div class="chart-container">
+          <chart ref="barChart" :options="barChartOptions" :autoresize="true"></chart>
+        </div>
+      </div>
+
+      <!-- Comparativo de Períodos -->
+      <div class="card">
+        <div class="chart-container">
+          <div style="text-align: center; margin-bottom: 15px;">
+            <div style="background-color: var(--blue); color: white; padding: 15px; border-radius: 10px;">
+              <div>R$ {{ formatNumber(periodoAtual) }}</div>
+              <div style="font-size: 14px;">Período Atual</div>
+            </div>
+          </div>
+          <div style="text-align: center; margin-bottom: 15px;">
+            <div style="background-color: var(--blue); color: white; padding: 15px; border-radius: 10px;">
+              <div>R$ {{ formatNumber(periodoAnterior) }}</div>
+              <div style="font-size: 14px;">Período Anterior</div>
+            </div>
+          </div>
+          <div style="text-align: center; margin-top: 20px;">
+            <div class="percentage-indicator percentage-up">{{ crescimentoPeriodo }}%</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Meta Realizada -->
+      <div class="card">
+        <div class="chart-container">
+          <div style="text-align: center; margin-bottom: 15px;">
+            <div style="background-color: var(--blue); color: white; padding: 15px; border-radius: 10px;">
+              <div>R$ {{ formatNumber(realizado) }}</div>
+              <div style="font-size: 14px;">Realizado</div>
+            </div>
+          </div>
+          <div style="text-align: center; margin-bottom: 15px;">
+            <div style="background-color: var(--blue); color: white; padding: 15px; border-radius: 10px;">
+              <div>R$ {{ formatNumber(metaAtual) }}</div>
+              <div style="font-size: 14px;">Meta</div>
+            </div>
+          </div>
+          <div style="text-align: center; margin-top: 20px;">
+            <div class="percentage-indicator percentage-up">{{ percentualMeta }}%</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Percentual da Meta Alcançada -->
+      <div class="card">
+        <div style="text-align: center; margin-bottom: 10px; font-weight: 600;">% da Meta Alcançada</div>
+        <div class="progress-chart">
+          <chart ref="gaugeChart" :options="gaugeOptions" :autoresize="true"></chart>
+        </div>
+      </div>
+
+      <!-- Análise por Categoria -->
+      <div class="card full-width">
+        <div style="font-weight: 600; margin-bottom: 15px;">Análise por Categoria</div>
+        <table class="category-table">
+          <tr v-for="category in categories" :key="category.name">
+            <td class="category-name">{{ category.name }}</td>
+            <td>
+              <div class="category-bar" :style="{ width: (category.value / maxCategoryValue * 100) + '%' }"></div>
+            </td>
+            <td class="category-value">R$ {{ formatNumber(category.value) }}</td>
+          </tr>
+        </table>
+      </div>
+
+      <!-- Ticket Médio -->
+      <div class="card">
+        <div class="ticket-container">
+          <div style="position: relative; display: inline-block;">
+            <div class="ticket-label">TICKET MÉDIO</div>
+            <div class="ticket-value">R$ {{ formatNumber(ticketMedio) }}</div>
+            <div style="position: absolute; top: -20px; right: -25px;">❓</div>
+            <div style="position: absolute; bottom: -10px; right: -15px;">💫</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Registrar componente Vue-ECharts
+    Vue.component('chart', VueECharts);
+
+    new Vue({
+      el: '#app',
+      data: {
+        // Dados para os KPIs
+        faturamento: 2343622.80,
+        recebimento: 2163553.68,
+        lucro: 584101.62,
+        metaFaturamento: 2398500.00,
+        
+        // Dados para o comparativo de períodos
+        periodoAtual: 277571.95,
+        periodoAnterior: 251062.43,
+        crescimentoPeriodo: 10.56,
+        
+        // Dados para a meta realizada
+        realizado: 277571.95,
+        metaAtual: 180180.00,
+        percentualMeta: 154.05,
+        
+        // Valor do Ticket Médio
+        ticketMedio: 1093.62,
+        
+        // Dados do gráfico de percentual da meta
+        percentualMetaAlcancada: 97.71,
+        
+        // Dados para as categorias
+        categories: [
+          { name: 'Categoria 1', value: 1807005.60 },
+          { name: 'Categoria 2', value: 151055.65 },
+          { name: 'Categoria 3', value: 111156.00 },
+          { name: 'Categoria 4', value: 91132.65 },
+          { name: 'Categoria 5', value: 79104.50 },
+          { name: 'Crax Fasciolata Fasciolata', value: 57590.15 },
+          { name: 'Campylopterus Hyperythrus', value: 46000.00 },
+          { name: 'Calidris Pusilla', value: 41000.00 },
+          { name: 'Lurocalis Semitorquatus', value: 38000.00 }
+        ],
+        
+        // Dados para o gráfico de barras (meses)
+        meses: ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'],
+        dadosAnoAtual: [190000, 210000, 205000, 220000, 280000, 200000, 210000, 180000, 220000, 240000, 270000, 240000],
+        dadosAnoAnterior: [170000, 180000, 190000, 200000, 220000, 195000, 200000, 170000, 210000, 230000, 210000, 210000],
+        dadosMeta: [200000, 210000, 215000, 225000, 235000, 215000, 225000, 205000, 230000, 240000, 250000, 245000]
+      },
+      computed: {
+        maxCategoryValue() {
+          return Math.max(...this.categories.map(c => c.value));
+        },
+        
+        // Opções para o gráfico de barras
+        barChartOptions() {
+          return {
+            tooltip: {
+              trigger: 'axis',
+              formatter: '{b}: <br/> Ano Atual: R$ {c0}<br/> Ano Anterior: R$ {c1}<br/> Meta: R$ {c2}'
+            },
+            grid: {
+              left: '3%',
+              right: '4%',
+              bottom: '3%',
+              containLabel: true
+            },
+            xAxis: {
+              type: 'category',
+              data: this.meses,
+              axisLine: {
+                lineStyle: {
+                  color: '#999'
+                }
+              }
+            },
+            yAxis: {
+              type: 'value',
+              axisLine: {
+                show: false
+              },
+              axisTick: {
+                show: false
+              },
+              axisLabel: {
+                formatter: function(value) {
+                  return value >= 1000 ? (value / 1000) + 'k' : value;
+                }
+              },
+              splitLine: {
+                lineStyle: {
+                  type: 'dashed',
+                  color: '#eee'
+                }
+              }
+            },
+            series: [
+              {
+                name: 'Ano Atual',
+                type: 'bar',
+                data: this.dadosAnoAtual,
+                barWidth: '20%',
+                itemStyle: {
+                  color: '#304592'
+                }
+              },
+              {
+                name: 'Ano Anterior',
+                type: 'bar',
+                data: this.dadosAnoAnterior,
+                barWidth: '20%',
+                itemStyle: {
+                  color: '#e0e0e0'
+                }
+              },
+              {
+                name: 'Meta',
+                type: 'line',
+                data: this.dadosMeta,
+                symbolSize: 6,
+                symbol: 'circle',
+                smooth: true,
+                itemStyle: {
+                  color: '#00b894'
+                },
+                lineStyle: {
+                  width: 3,
+                  color: '#00b894'
+                }
+              }
+            ]
+          };
+        },
+        
+        // Opções para o gráfico de gauge
+        gaugeOptions() {
+          return {
+            series: [{
+              type: 'gauge',
+              startAngle: 180,
+              endAngle: 0,
+              min: 0,
+              max: 100,
+              splitNumber: 10,
+              radius: '100%',
+              axisLine: {
+                lineStyle: {
+                  width: 30,
+                  color: [
+                    [0.7, '#f5f6fa'],
+                    [1, '#304592']
+                  ]
+                }
+              },
+              pointer: {
+                show: false
+              },
+              axisTick: {
+                show: false
+              },
+              splitLine: {
+                show: false
+              },
+              axisLabel: {
+                show: false
+              },
+              detail: {
+                offsetCenter: [0, '0%'],
+                formatter: this.percentualMetaAlcancada + '%',
+                fontSize: 36,
+                fontWeight: 'bold',
+                color: '#304592'
+              },
+              data: [{
+                value: this.percentualMetaAlcancada,
+                name: '% da Meta',
+                title: {
+                  offsetCenter: [0, '50%']
+                }
+              }],
+              title: {
+                fontSize: 14
+              },
+              progress: {
+                show: true,
+                width: 30,
+                itemStyle: {
+                  color: '#304592'
+                }
+              }
+            }]
+          };
+        },
+        
+        // Opções para os mini gráficos
+        chartSmallOptions() {
+          return {
+            grid: {
+              top: 0,
+              right: 0,
+              bottom: 0,
+              left: 0
+            },
+            xAxis: {
+              type: 'category',
+              show: false,
+              data: [1, 2, 3, 4, 5, 6, 7, 8, 9]
+            },
+            yAxis: {
+              type: 'value',
+              show: false
+            },
+            series: [{
+              data: [120, 200, 150, 80, 70, 110, 130, 100, 150],
+              type: 'line',
+              showSymbol: false,
+              lineStyle: {
+                width: 2,
+                color: '#ffffff'
+              },
+              areaStyle: {
+                color: {
+                  type: 'linear',
+                  x: 0,
+                  y: 0,
+                  x2: 0,
+                  y2: 1,
+                  colorStops: [{
+                    offset: 0,
+                    color: 'rgba(255, 255, 255, 0.3)'
+                  }, {
+                    offset: 1,
+                    color: 'rgba(255, 255, 255, 0.1)'
+                  }]
+                }
+              }
+            }]
+          };
+        },
+        
+        chartSmallGreenOptions() {
+          const options = JSON.parse(JSON.stringify(this.chartSmallOptions));
+          options.series[0].data = [90, 110, 115, 130, 140, 160, 170, 165, 190];
+          return options;
+        },
+        
+        chartSmallPinkOptions() {
+          const options = JSON.parse(JSON.stringify(this.chartSmallOptions));
+          options.series[0].data = [30, 40, 35, 50, 59, 70, 80, 95, 110];
+          return options;
+        }
+      },
+      methods: {
+        // Formatação de números
+        formatNumber(value) {
+          return value.toLocaleString('pt-BR', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+          });
+        }
+      }
+    });
+  </script>
+</body>
+</html>
